@@ -90,7 +90,7 @@ export default function ChatWindow() {
                 >
                   {(
                     currentChat?.name?.[0] ??
-                    currentChat?.wa_id?.[0] ??
+                    currentChat?.waId?.[0] ??
                     "?"
                   ).toUpperCase()}
                 </AvatarFallback>
@@ -116,7 +116,7 @@ export default function ChatWindow() {
                 <AvatarFallback className="text-4xl">
                   {(
                     currentChat?.name?.[0] ??
-                    currentChat?.wa_id?.[0] ??
+                    currentChat?.waId?.[0] ??
                     "?"
                   ).toUpperCase()}
                 </AvatarFallback>
@@ -126,7 +126,7 @@ export default function ChatWindow() {
                 {currentChat?.name ?? "Unknown"}
               </span>
               <span className="text-sm text-gray-500 font-normal">
-                {currentChat?.phone || currentChat?.wa_id}
+                {currentChat?.waId}
               </span>
             </div>
           </SheetContent>

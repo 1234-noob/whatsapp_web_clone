@@ -39,6 +39,7 @@ api.interceptors.response.use(
 export const fetchContacts = async (params = {}) => {
   // params: { q?: string, cursor?: string, limit?: number }
   const { data } = await api.get("/contacts", { params });
+  console.log(data);
   return data;
 };
 

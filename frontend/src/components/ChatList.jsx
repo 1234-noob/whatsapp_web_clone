@@ -148,7 +148,7 @@ export default function ChatList() {
                 <div className="flex items-center justify-between">
                   <p className="truncate font-medium">{contact.name}</p>
                   <span className="ml-2 text-xs text-muted-foreground shrink-0">
-                    {new Date(contact.last_timestamp).toLocaleTimeString([], {
+                    {new Date(contact.lastMessageAt).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
@@ -156,11 +156,11 @@ export default function ChatList() {
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <p className="truncate text-sm text-muted-foreground">
-                    {contact.last_message}
+                    {contact.lastMessagePreview}
                   </p>
-                  {contact.unread_count > 0 && (
+                  {contact.unread > 0 && (
                     <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-brand-foreground">
-                      {contact.unread_count}
+                      {contact.unread}
                     </span>
                   )}
                 </div>
