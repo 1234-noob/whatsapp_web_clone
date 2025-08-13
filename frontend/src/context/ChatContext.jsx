@@ -1,5 +1,18 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { fetchContacts, fetchMessages } from "../config/axios";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
+import {
+  fetchContacts,
+  fetchMessages,
+  sendMessage as apiSendMessage,
+  markRead,
+} from "../services/axios"; // new API helpers
+import socket from "@/services/socket";
+import { toast } from "@/hooks/use-toast";
 
 const ChatContext = createContext();
 
@@ -7,103 +20,167 @@ export const ChatProvider = ({ children }) => {
   const [contacts, setContacts] = useState([]);
   const [currentChat, setCurrentChat] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
-  const loadContacts = async () => {
+  /** 🔹 Load all contacts from backend */
+  const loadContacts = useCallback(async () => {
     try {
-      setLoading(true);
+      setLoadingContacts(true);
       const data = await fetchContacts();
-      setContacts(data);
+      setContacts(data.contacts ?? data);
     } catch (error) {
       console.error("Error loading contacts:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load contacts",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setLoadingContacts(false);
     }
-  };
+  }, []);
 
-  const loadMessages = async (waId) => {
+  /** 🔹 Load messages for a specific contact */
+  const loadMessages = useCallback(async (waId) => {
+    if (!waId) return;
     try {
-      setLoading(true);
+      setLoadingMessages(true);
       const data = await fetchMessages(waId);
-      setMessages(data);
+      setMessages(data.messages ?? data);
     } catch (error) {
       console.error("Error loading messages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load messages",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false);
+      setLoadingMessages(false);
     }
-  };
+  }, []);
 
-  const sendMessage = async (waId, text) => {
+  /** 🔹 Send message with optimistic UI + reconciliation */
+  const sendMessage = useCallback(async (waId, text) => {
+    const trimmed = text?.trim();
+    if (!trimmed) return;
+
+    const tempId = crypto.randomUUID();
+    const tempMessage = {
+      _id: tempId,
+      text: trimmed,
+      from_me: true,
+      timestamp: new Date().toISOString(),
+      status: "pending",
+    };
+    setMessages((prev) => [...prev, tempMessage]);
+
     try {
-      // Optimistic update
-      const tempId = crypto.randomUUID();
-      const tempMessage = {
-        _id: tempId,
-        text,
-        from_me: true,
-        timestamp: new Date().toISOString(),
-        status: "sending",
-      };
-
-      setMessages((prev) => [...prev, tempMessage]);
-
-      const response = await api.post(`/messages/${waId}`, { text });
-
-      // Update messages with server response
+      const res = await apiSendMessage(waId, trimmed, {
+        clientMessageId: tempId,
+      });
       setMessages((prev) =>
-        prev.map((msg) => (msg._id === tempId ? response.data : msg))
-      );
-
-      // Update contact's last message
-      setContacts((prev) =>
-        prev.map((contact) =>
-          contact.wa_id === waId
-            ? {
-                ...contact,
-                last_message: text,
-                last_timestamp: new Date().toISOString(),
-              }
-            : contact
+        prev.map((m) =>
+          m._id === tempId ? { ...res.message, status: "sent" } : m
         )
       );
-
-      // Simulate message states (remove in production)
-      setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === response.data._id
-              ? { ...msg, status: "delivered" }
-              : msg
-          )
-        );
-      }, 1000);
-
-      setTimeout(() => {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === response.data._id ? { ...msg, status: "read" } : msg
-          )
-        );
-      }, 2000);
+      // update contacts preview
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.wa_id === waId
+            ? {
+                ...c,
+                last_message: trimmed,
+                last_timestamp: new Date().toISOString(),
+              }
+            : c
+        )
+      );
     } catch (error) {
-      console.error("Error sending message:", error);
+      setMessages((prev) =>
+        prev.map((m) => (m._id === tempId ? { ...m, status: "failed" } : m))
+      );
       toast({
         title: "Error",
         description: "Failed to send message",
         variant: "destructive",
       });
     }
-  };
-
-  useEffect(() => {
-    loadContacts();
   }, []);
 
+  /** 🔹 Mark all messages in current chat as read */
+  const markCurrentChatRead = useCallback(async () => {
+    if (!currentChat) return;
+    try {
+      const unreadIds = messages
+        .filter((m) => !m.from_me && m.status !== "read")
+        .map((m) => m._id);
+      if (unreadIds.length) {
+        await markRead(currentChat.wa_id, unreadIds);
+        setMessages((prev) =>
+          prev.map((m) =>
+            unreadIds.includes(m._id) ? { ...m, status: "read" } : m
+          )
+        );
+        // update contact unread count
+        setContacts((prev) =>
+          prev.map((c) =>
+            c.wa_id === currentChat.wa_id ? { ...c, unread_count: 0 } : c
+          )
+        );
+      }
+    } catch (e) {
+      console.error("Failed to mark read:", e);
+    }
+  }, [currentChat, messages]);
+
+  /** 🔹 Initial contacts load */
+  useEffect(() => {
+    loadContacts();
+  }, [loadContacts]);
+
+  /** 🔹 Load messages when active chat changes */
   useEffect(() => {
     if (currentChat) {
       loadMessages(currentChat.wa_id);
+      markCurrentChatRead();
     }
+  }, [currentChat, loadMessages, markCurrentChatRead]);
+
+  /** 🔹 Socket: incoming messages */
+  useEffect(() => {
+    socket.on("new_message", (msg) => {
+      if (msg.wa_id === currentChat?.wa_id) {
+        setMessages((prev) => [...prev, msg]);
+      }
+      setContacts((prev) =>
+        prev.map((c) =>
+          c.wa_id === msg.wa_id
+            ? {
+                ...c,
+                last_message: msg.text,
+                last_timestamp: msg.timestamp,
+                unread_count:
+                  msg.wa_id === currentChat?.wa_id
+                    ? c.unread_count
+                    : (c.unread_count || 0) + 1,
+              }
+            : c
+        )
+      );
+    });
+    return () => socket.off("new_message");
   }, [currentChat]);
+
+  /** 🔹 Socket: contact updates */
+  useEffect(() => {
+    socket.on("contact_updated", (updatedContact) => {
+      setContacts((prev) =>
+        prev.map((c) => (c.wa_id === updatedContact.wa_id ? updatedContact : c))
+      );
+    });
+    return () => socket.off("contact_updated");
+  }, []);
 
   return (
     <ChatContext.Provider
@@ -112,7 +189,7 @@ export const ChatProvider = ({ children }) => {
         currentChat,
         setCurrentChat,
         messages,
-        loading,
+        loading: loadingContacts || loadingMessages,
         sendMessage,
         refreshContacts: loadContacts,
         refreshMessages: () => currentChat && loadMessages(currentChat.wa_id),
@@ -122,10 +199,9 @@ export const ChatProvider = ({ children }) => {
     </ChatContext.Provider>
   );
 };
+
 export const useChat = () => {
-  const context = useContext(ChatContext);
-  if (!context) {
-    throw new Error("useChat must be used within a ChatProvider");
-  }
-  return context;
+  const ctx = useContext(ChatContext);
+  if (!ctx) throw new Error("useChat must be used within a ChatProvider");
+  return ctx;
 };

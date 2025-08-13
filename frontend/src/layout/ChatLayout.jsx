@@ -1,7 +1,7 @@
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useChat } from "../../context/ChatContext";
-import ChatList from "./ChatList";
-import ChatWindow from "./ChatWindow";
+import { useChat } from "../context/ChatContext";
+import ChatList from "../components/ChatList";
+import ChatWindow from "../components/ChatWindow";
 
 export default function ChatLayout() {
   const isMobile = useIsMobile();

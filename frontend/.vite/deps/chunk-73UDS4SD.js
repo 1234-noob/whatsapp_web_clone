@@ -1,23 +1,13 @@
 import {
   useComposedRefs,
   useLayoutEffect2
-} from "./chunk-NZIIPHYA.js";
+} from "./chunk-X77I2TLY.js";
 import {
   require_react
 } from "./chunk-32E4H3EV.js";
 import {
   __toESM
 } from "./chunk-G3PMV62Z.js";
-
-// node_modules/@radix-ui/primitive/dist/index.mjs
-function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
-  return function handleEvent(event) {
-    originalEventHandler == null ? void 0 : originalEventHandler(event);
-    if (checkForDefaultPrevented === false || !event.defaultPrevented) {
-      return ourEventHandler == null ? void 0 : ourEventHandler(event);
-    }
-  };
-}
 
 // node_modules/@radix-ui/react-presence/dist/index.mjs
 var React2 = __toESM(require_react(), 1);
@@ -146,8 +136,18 @@ function getElementRef(element) {
   return element.props.ref || element.ref;
 }
 
+// node_modules/@radix-ui/primitive/dist/index.mjs
+function composeEventHandlers(originalEventHandler, ourEventHandler, { checkForDefaultPrevented = true } = {}) {
+  return function handleEvent(event) {
+    originalEventHandler == null ? void 0 : originalEventHandler(event);
+    if (checkForDefaultPrevented === false || !event.defaultPrevented) {
+      return ourEventHandler == null ? void 0 : ourEventHandler(event);
+    }
+  };
+}
+
 export {
-  composeEventHandlers,
-  Presence
+  Presence,
+  composeEventHandlers
 };
-//# sourceMappingURL=chunk-54MP4UQ6.js.map
+//# sourceMappingURL=chunk-73UDS4SD.js.map

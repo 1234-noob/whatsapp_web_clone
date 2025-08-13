@@ -1,12 +1,4 @@
-import {
-  ArrowLeft,
-  MoreVertical,
-  Phone,
-  Video,
-  User,
-  Mail,
-  PhoneCall,
-} from "lucide-react";
+import { ArrowLeft, MoreVertical, Phone, Video } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -19,24 +11,37 @@ import {
 import MessageBubble from "./MessageBubble";
 import MessageComposer from "./MessageComposer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useChat } from "../../context/ChatContext";
-import { useEffect, useRef } from "react";
+import { useChat } from "../context/ChatContext";
+import { useEffect, useRef, useMemo } from "react";
 
 export default function ChatWindow() {
   const isMobile = useIsMobile();
   const { currentChat, messages, loading, setCurrentChat } = useChat();
-  const scrollRef = useRef(null);
+  const bottomRef = useRef(null);
 
+  // Memoize a safe list of messages (guards against nulls)
+  const safeMessages = useMemo(
+    () =>
+      Array.isArray(messages)
+        ? messages.map((m) => ({
+            _id: m._id ?? m.id ?? crypto.randomUUID(),
+            text: m.text ?? "",
+            from_me: !!m.from_me,
+            timestamp: m.timestamp ?? new Date().toISOString(),
+            status: m.status ?? "sent",
+          }))
+        : [],
+    [messages]
+  );
+
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
-    // Scroll to bottom when messages change
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [safeMessages]);
 
-  const handleBack = () => {
-    setCurrentChat(null);
-  };
+  const handleBack = () => setCurrentChat(null);
 
   if (!currentChat) {
     return (
@@ -72,37 +77,56 @@ export default function ChatWindow() {
             <ArrowLeft className="h-5 w-5" />
           </button>
         )}
+
         <Sheet>
           <SheetTrigger asChild>
-            <button className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <button
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+              aria-label="Open profile"
+            >
               <Avatar className="h-9 w-9">
-                <AvatarFallback aria-label={`${currentChat.name} avatar`}>
-                  {currentChat.name[0]}
+                <AvatarFallback
+                  aria-label={`${currentChat?.name ?? "User"} avatar`}
+                >
+                  {(
+                    currentChat?.name?.[0] ??
+                    currentChat?.wa_id?.[0] ??
+                    "?"
+                  ).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="truncate font-medium">{currentChat.name}</p>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="truncate font-medium">
+                  {currentChat?.name ?? "Unknown"}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   online • secure
                 </p>
               </div>
             </button>
           </SheetTrigger>
+
           <SheetContent side="right" className="w-[400px] sm:w-[540px]">
             <SheetHeader className="text-left">
               <SheetTitle>Profile Information</SheetTitle>
             </SheetHeader>
+
             <div className="mt-6 flex flex-col items-center space-y-3">
               <Avatar className="h-32 w-32">
                 <AvatarFallback className="text-4xl">
-                  {currentChat.name[0]}
+                  {(
+                    currentChat?.name?.[0] ??
+                    currentChat?.wa_id?.[0] ??
+                    "?"
+                  ).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
 
-              <span className="text-xl font-medium">{currentChat.name}</span>
-
+              <span className="text-xl font-medium">
+                {currentChat?.name ?? "Unknown"}
+              </span>
               <span className="text-sm text-gray-500 font-normal">
-                {currentChat.phone || currentChat.wa_id}
+                {currentChat?.phone || currentChat?.wa_id}
               </span>
             </div>
           </SheetContent>
@@ -132,20 +156,26 @@ export default function ChatWindow() {
 
       <ScrollArea className="flex-1">
         <div className="mx-auto w-full px-4 py-4 space-y-2">
-          {messages.map((message) => (
-            <MessageBubble
-              key={message._id}
-              fromMe={message.from_me}
-              time={new Date(message.timestamp).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-              status={message.status || "sent"}
-            >
-              {message.text}
-            </MessageBubble>
-          ))}
-          <div ref={scrollRef} />
+          {safeMessages.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No messages yet. Say hi!
+            </div>
+          ) : (
+            safeMessages.map((message) => (
+              <MessageBubble
+                key={message._id}
+                fromMe={message.from_me}
+                time={new Date(message.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+                status={message.status}
+              >
+                {message.text}
+              </MessageBubble>
+            ))
+          )}
+          <div ref={bottomRef} />
         </div>
       </ScrollArea>
 

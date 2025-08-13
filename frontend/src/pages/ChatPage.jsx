@@ -1,6 +1,6 @@
-import ChatLayout from "../views/chat/ChatLayout";
+import ChatLayout from "../layout/ChatLayout";
 
-function Index() {
+function ChatPage() {
   return (
     <div className="min-h-screen bg-background">
       <h1 className="sr-only">WhatsApp Web Clone UI in React</h1>
@@ -9,4 +9,4 @@ function Index() {
   );
 }
 
-export default Index;
+export default ChatPage;
