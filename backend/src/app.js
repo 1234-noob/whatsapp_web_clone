@@ -9,8 +9,7 @@ const messagesRouter = require("./routes/messages.js");
 const app = express();
 app.use(
   cors({
-    origin: "https://whatsapp-web-clone-ochre-xi.vercel.app/",
-    credentials: true,
+    origin: "*",
   })
 );
 
