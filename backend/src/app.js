@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const serverless = require("serverless-http");
+
 const morgan = require("morgan");
 const webhookRouter = require("./routes/webhook.js");
 const conversationsRouter = require("./routes/conversations.js");
@@ -26,4 +26,4 @@ app.use("/webhook", webhookRouter);
 app.use("/contacts", conversationsRouter);
 app.use("/messages", messagesRouter);
 
-module.exports = serverless(app);
+module.exports = app;
