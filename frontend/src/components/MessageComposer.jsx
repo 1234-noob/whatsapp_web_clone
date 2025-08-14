@@ -10,10 +10,11 @@ export default function MessageComposer() {
 
   const handleSend = useCallback(async () => {
     const value = text.trim();
-    if (!value || !currentChat?.wa_id) return;
+    if (!value || !currentChat?.waId) return;
+    console.log(value, currentChat?.waId);
 
     try {
-      await sendMessage(currentChat.wa_id, value);
+      await sendMessage(currentChat?.waId, value);
       setText("");
       toast({
         title: "Message sent",

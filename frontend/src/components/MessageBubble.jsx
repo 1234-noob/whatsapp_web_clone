@@ -4,11 +4,13 @@ export default function MessageBubble({
   fromMe = false,
   time = "",
   status = "sent",
+  direction,
+
   children,
 }) {
   // Map status to icon + color
   const renderTick = () => {
-    if (!fromMe) return null;
+    if (direction === "inbound") return null;
 
     switch (status) {
       case "read":
@@ -57,10 +59,16 @@ export default function MessageBubble({
   };
 
   return (
-    <div className={`flex w-full ${fromMe ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex w-full ${
+        direction === "outbound" ? "justify-end" : "justify-start"
+      }`}
+    >
       <div
         className={`max-w-[78%] rounded-lg px-3 py-2 text-sm shadow-sm animate-message-in ${
-          fromMe ? "bg-chat-outgoing text-black" : "bg-chat-incoming"
+          direction === "outbound"
+            ? "bg-chat-outgoing text-black"
+            : "bg-chat-incoming"
         }`}
       >
         <p className="whitespace-pre-wrap break-words">{children}</p>

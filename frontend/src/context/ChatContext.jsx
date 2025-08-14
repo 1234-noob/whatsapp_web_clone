@@ -2,6 +2,7 @@ import {
   createContext,
   useContext,
   useState,
+  useRef,
   useEffect,
   useCallback,
 } from "react";
@@ -23,6 +24,24 @@ export const ChatProvider = ({ children }) => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
 
+  const lastLoadedWaIdRef = useRef(null);
+
+  const loadMessages = useCallback(async (waId) => {
+    if (!waId || waId === lastLoadedWaIdRef.current) return;
+
+    lastLoadedWaIdRef.current = waId;
+
+    try {
+      setLoadingMessages(true);
+      const data = await fetchMessages(waId);
+      setMessages(data.messages ?? data);
+    } catch (error) {
+      console.error("Error loading messages:", error);
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, []);
+
   /** 🔹 Load all contacts from backend */
   const loadContacts = useCallback(async () => {
     try {
@@ -38,25 +57,6 @@ export const ChatProvider = ({ children }) => {
       });
     } finally {
       setLoadingContacts(false);
-    }
-  }, []);
-
-  /** 🔹 Load messages for a specific contact */
-  const loadMessages = useCallback(async (waId) => {
-    if (!waId) return;
-    try {
-      setLoadingMessages(true);
-      const data = await fetchMessages(waId);
-      setMessages(data.messages ?? data);
-    } catch (error) {
-      console.error("Error loading messages:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load messages",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingMessages(false);
     }
   }, []);
 
@@ -84,7 +84,6 @@ export const ChatProvider = ({ children }) => {
           m._id === tempId ? { ...res.message, status: "sent" } : m
         )
       );
-      // update contacts preview
       setContacts((prev) =>
         prev.map((c) =>
           c.wa_id === waId
@@ -115,17 +114,19 @@ export const ChatProvider = ({ children }) => {
       const unreadIds = messages
         .filter((m) => !m.from_me && m.status !== "read")
         .map((m) => m._id);
+
       if (unreadIds.length) {
-        await markRead(currentChat.wa_id, unreadIds);
+        await markRead(currentChat.waId, unreadIds);
         setMessages((prev) =>
           prev.map((m) =>
             unreadIds.includes(m._id) ? { ...m, status: "read" } : m
           )
         );
+
         // update contact unread count
         setContacts((prev) =>
           prev.map((c) =>
-            c.wa_id === currentChat.wa_id ? { ...c, unread_count: 0 } : c
+            c.wa_id === currentChat.waId ? { ...c, unread_count: 0 } : c
           )
         );
       }
@@ -134,12 +135,10 @@ export const ChatProvider = ({ children }) => {
     }
   }, [currentChat, messages]);
 
-  /** 🔹 Initial contacts load */
   useEffect(() => {
     loadContacts();
   }, [loadContacts]);
 
-  /** 🔹 Load messages when active chat changes */
   useEffect(() => {
     if (currentChat) {
       loadMessages(currentChat.wa_id);
@@ -147,7 +146,6 @@ export const ChatProvider = ({ children }) => {
     }
   }, [currentChat, loadMessages, markCurrentChatRead]);
 
-  /** 🔹 Socket: incoming messages */
   useEffect(() => {
     socket.on("new_message", (msg) => {
       if (msg.wa_id === currentChat?.wa_id) {
@@ -172,7 +170,12 @@ export const ChatProvider = ({ children }) => {
     return () => socket.off("new_message");
   }, [currentChat]);
 
-  /** 🔹 Socket: contact updates */
+  const refreshMessages = useCallback(() => {
+    if (currentChat?.waId) {
+      loadMessages(currentChat.waId);
+    }
+  }, [currentChat?.waId, loadMessages]);
+
   useEffect(() => {
     socket.on("contact_updated", (updatedContact) => {
       setContacts((prev) =>
@@ -181,6 +184,42 @@ export const ChatProvider = ({ children }) => {
     });
     return () => socket.off("contact_updated");
   }, []);
+
+  useEffect(() => {
+    socket.on(
+      "conversation:update",
+      ({ wa_id, last_message, last_timestamp }) => {
+        setContacts((prev) =>
+          prev.map((c) =>
+            c.wa_id === wa_id ? { ...c, last_message, last_timestamp } : c
+          )
+        );
+      }
+    );
+
+    return () => socket.off("conversation:update");
+  }, [socket]);
+
+  function updateContactAfterMessage(waId, message) {
+    const updatedContacts = contacts.map((contact) => {
+      if (contact.waId === waId) {
+        return {
+          ...contact,
+          lastMessagePreview: message,
+          lastMessageAt: new Date().toISOString(), // or from server
+          unread: 0, // or update accordingly
+        };
+      }
+      return contact;
+    });
+
+    // Sort contacts so the most recent message comes first
+    updatedContacts.sort(
+      (a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)
+    );
+
+    setContacts(updatedContacts); // Add this setter in context if not already there
+  }
 
   return (
     <ChatContext.Provider
@@ -192,7 +231,7 @@ export const ChatProvider = ({ children }) => {
         loading: loadingContacts || loadingMessages,
         sendMessage,
         refreshContacts: loadContacts,
-        refreshMessages: () => currentChat && loadMessages(currentChat.wa_id),
+        refreshMessages,
       }}
     >
       {children}

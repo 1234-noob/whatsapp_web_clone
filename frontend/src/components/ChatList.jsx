@@ -14,18 +14,20 @@ import {
 } from "@/components/ui/sheet";
 
 export default function ChatList() {
-  const { contacts, currentChat, setCurrentChat, loading } = useChat();
+  const { contacts, currentChat, messages, setCurrentChat, loading } =
+    useChat();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredContacts, setFilteredContacts] = useState([]);
 
-  /** 🔍 Search filter logic */
   useEffect(() => {
     if (contacts) {
-      setFilteredContacts(
-        contacts.filter((contact) =>
+      const filtered = contacts
+        .filter((contact) =>
           contact.name.toLowerCase().includes(searchQuery.toLowerCase())
         )
-      );
+        .sort((a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)); // sort latest first
+
+      setFilteredContacts(filtered);
     }
   }, [contacts, searchQuery]);
 
@@ -78,10 +80,10 @@ export default function ChatList() {
                 </div>
                 <nav className="flex-1 mt-4 overflow-y-auto">
                   {filteredContacts.map((contact) => {
-                    const active = contact.wa_id === currentChat?.wa_id;
+                    const active = contact.waId === currentChat?.waId;
                     return (
                       <button
-                        key={contact.wa_id}
+                        key={contact.waId}
                         onClick={() => setCurrentChat(contact)}
                         className={`w-full gap-3 px-4 py-3 flex items-center text-left border-b hover:bg-muted/60 transition ${
                           active ? "bg-muted" : "bg-card"
@@ -129,10 +131,12 @@ export default function ChatList() {
       {/* Contact list */}
       <nav className="flex-1 overflow-y-auto">
         {filteredContacts.map((contact) => {
-          const active = contact.wa_id === currentChat?.wa_id;
+          const active = contact.waId === currentChat?.waId;
+          console.log(contact);
+
           return (
             <button
-              key={contact.wa_id}
+              key={contact.waId}
               onClick={() => setCurrentChat(contact)}
               className={`w-full gap-3 px-4 py-3 flex items-center text-left border-b hover:bg-muted/60 transition ${
                 active ? "bg-muted" : "bg-card"

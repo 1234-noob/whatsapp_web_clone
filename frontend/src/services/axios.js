@@ -39,7 +39,7 @@ api.interceptors.response.use(
 export const fetchContacts = async (params = {}) => {
   // params: { q?: string, cursor?: string, limit?: number }
   const { data } = await api.get("/contacts", { params });
-  console.log(data);
+
   return data;
 };
 
@@ -49,20 +49,22 @@ export const fetchMessages = async (
   { before, after, limit = 50 } = {}
 ) => {
   const params = {};
+
   if (before) params.before = before; // e.g., timestamp or messageId
   if (after) params.after = after;
   if (limit) params.limit = limit;
-  const { data } = await api.get(`/messages/${waId}`, { params });
+  const { data } = await api.get(`/contacts/${waId}/messages`, { params });
+
   return data;
 };
 
-// Send text (and optional media/quoted)
 export const sendMessage = async (waId, text, options = {}) => {
+  console.log(waId, text);
   const {
     clientMessageId = crypto.randomUUID(),
     quotedMessageId,
     metadata,
-    media, // { type, url | file, caption }
+    media,
   } = options;
 
   const payload = {
@@ -75,10 +77,10 @@ export const sendMessage = async (waId, text, options = {}) => {
   };
 
   const { data } = await api.post("/messages", payload);
+  console.log(data);
   return data;
 };
 
-// Mark messages as read (read receipts)
 export const markRead = async (waId, messageIds = []) => {
   const { data } = await api.post(`/messages/${waId}/read`, {
     message_ids: messageIds,

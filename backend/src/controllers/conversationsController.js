@@ -20,14 +20,33 @@ async function listConversations(req, res) {
 }
 
 async function getMessages(req, res) {
-  const { waId } = req.params;
-  const { limit = 50, before } = req.query;
-  const filter = { waId };
-  if (before) filter.timestamp = { $lt: new Date(before) };
-  const msgs = await Message.find(filter)
-    .sort({ timestamp: -1 })
-    .limit(Number(limit));
-  res.json(msgs.reverse());
+  try {
+    const { waId } = req.params;
+    const { limit = 50, before } = req.query;
+
+    if (!waId) {
+      return res.status(400).json({ error: "Missing waId parameter" });
+    }
+
+    const filter = { waId };
+
+    if (before) {
+      const beforeDate = new Date(before);
+      if (isNaN(beforeDate)) {
+        return res.status(400).json({ error: "Invalid 'before' timestamp" });
+      }
+      filter.timestamp = { $lt: beforeDate };
+    }
+
+    const msgs = await Message.find(filter)
+      .sort({ timestamp: -1 })
+      .limit(Number(limit));
+
+    res.json(msgs.reverse()); // oldest to newest
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 }
 
 module.exports = {

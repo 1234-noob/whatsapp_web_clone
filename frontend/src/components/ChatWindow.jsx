@@ -16,10 +16,18 @@ import { useEffect, useRef, useMemo } from "react";
 
 export default function ChatWindow() {
   const isMobile = useIsMobile();
-  const { currentChat, messages, loading, setCurrentChat } = useChat();
+  const {
+    currentChat,
+    messages,
+    loading,
+    setCurrentChat,
+    refreshMessages,
+    markCurrentChatRead,
+  } = useChat();
   const bottomRef = useRef(null);
 
   // Memoize a safe list of messages (guards against nulls)
+
   const safeMessages = useMemo(
     () =>
       Array.isArray(messages)
@@ -29,10 +37,16 @@ export default function ChatWindow() {
             from_me: !!m.from_me,
             timestamp: m.timestamp ?? new Date().toISOString(),
             status: m.status ?? "sent",
+            direction: m.direction,
           }))
         : [],
     [messages]
   );
+  useEffect(() => {
+    if (currentChat?.waId) {
+      refreshMessages();
+    }
+  }, [currentChat?.waId]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -42,6 +56,12 @@ export default function ChatWindow() {
   }, [safeMessages]);
 
   const handleBack = () => setCurrentChat(null);
+
+  useEffect(() => {
+    if (currentChat && messages.length > 0) {
+      markCurrentChatRead;
+    }
+  }, [currentChat?.waId, messages]);
 
   if (!currentChat) {
     return (
@@ -170,6 +190,7 @@ export default function ChatWindow() {
                   minute: "2-digit",
                 })}
                 status={message.status}
+                direction={message.direction}
               >
                 {message.text}
               </MessageBubble>
