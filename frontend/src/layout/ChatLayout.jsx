@@ -17,7 +17,6 @@ export default function ChatLayout() {
 
   return (
     <div className="flex h-screen max-h-screen">
-      {/* Sidebar / Chat list */}
       <aside
         className={`${
           isMobile && currentChat ? "hidden" : "flex"
@@ -27,7 +26,6 @@ export default function ChatLayout() {
         <ChatList />
       </aside>
 
-      {/* Main chat area */}
       <main
         className={`${
           isMobile && !currentChat ? "hidden" : "flex"

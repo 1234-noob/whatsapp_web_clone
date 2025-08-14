@@ -4,7 +4,7 @@ const { getIO } = require("../sockets/socket.js");
 
 const toDate = (ts) => {
   if (!ts) return new Date();
-  // payloads give epoch seconds as strings
+
   const n = Number(ts);
   return new Date(n * (String(n).length > 10 ? 1 : 1000));
 };
@@ -18,7 +18,6 @@ async function handleWebhook(req, res) {
       for (const change of entry.changes || []) {
         const v = change.value || {};
 
-        // contacts upsert
         for (const c of v.contacts || []) {
           const waId = c.wa_id;
           if (!waId) continue;
@@ -29,16 +28,15 @@ async function handleWebhook(req, res) {
           );
         }
 
-        // new messages
         for (const m of v.messages || []) {
           const from = m.from;
-          // If from equals your business number, mark outbound else inbound
+
           const businessNumber = v?.metadata?.display_phone_number;
           const direction = from === businessNumber ? "outbound" : "inbound";
           const waId =
             direction === "outbound"
-              ? v.contacts?.[0]?.wa_id || m.to || m.recipient_id // target user
-              : from; // sender user
+              ? v.contacts?.[0]?.wa_id || m.to || m.recipient_id
+              : from;
 
           const text = m.text?.body || "";
           const msgDoc = await Message.create({
@@ -69,10 +67,9 @@ async function handleWebhook(req, res) {
           getIO()?.emit("conversation:update", { waId });
         }
 
-        // status updates
         for (const s of v.statuses || []) {
           const metaId = s.meta_msg_id || s.id || s.message_id;
-          const status = s.status; // "sent" | "delivered" | "read"
+          const status = s.status;
           if (!metaId || !status) continue;
 
           const updated = await Message.findOneAndUpdate(

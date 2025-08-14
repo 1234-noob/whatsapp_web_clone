@@ -8,7 +8,6 @@ export default function MessageBubble({
 
   children,
 }) {
-  // Map status to icon + color
   const renderTick = () => {
     if (direction === "inbound") return null;
 

@@ -4,9 +4,8 @@ const axios = require("axios");
 require("dotenv").config();
 
 const PAYLOAD_DIR = process.argv[2] || path.join(__dirname, "../../payloads");
-const WEBHOOK_URL = process.env.WEBHOOK_URL || "http://localhost:8080/webhook";
+const WEBHOOK_URL = process.env.WEBHOOK_URL || "http://localhost:3000/webhook";
 
-// ✅ Validator function
 function validatePayload(payload, fileName) {
   const errors = [];
 
@@ -47,7 +46,6 @@ function validatePayload(payload, fileName) {
   return true;
 }
 
-// 🚀 Ingestion loop
 fs.readdir(PAYLOAD_DIR, async (err, files) => {
   if (err) {
     console.error("Error reading payload directory:", err);
@@ -67,7 +65,6 @@ fs.readdir(PAYLOAD_DIR, async (err, files) => {
       continue;
     }
 
-    // ✅ Validate before sending
     if (!validatePayload(payload, file)) continue;
 
     try {

@@ -1,7 +1,5 @@
-// api/index.js
 import axios from "axios";
 
-// Prefer env; fall back to same-host dev default
 const BASE_URL =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_URL) ||
   (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
@@ -10,18 +8,16 @@ const BASE_URL =
 const api = axios.create({
   baseURL: BASE_URL,
   headers: { "Content-Type": "application/json" },
-  withCredentials: true, // if you use cookie-based auth; set to false if token-only
+  withCredentials: true,
   timeout: 15000,
 });
 
-// Attach bearer token if present
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
-// Normalize errors
 api.interceptors.response.use(
   (res) => res,
   (error) => {
@@ -35,7 +31,6 @@ api.interceptors.response.use(
   }
 );
 
-// Contacts (supports search + pagination)
 export const fetchContacts = async (params = {}) => {
   // params: { q?: string, cursor?: string, limit?: number }
   const { data } = await api.get("/contacts", { params });
@@ -43,7 +38,6 @@ export const fetchContacts = async (params = {}) => {
   return data;
 };
 
-// Messages (cursor/limit for infinite scroll)
 export const fetchMessages = async (
   waId,
   { before, after, limit = 50 } = {}

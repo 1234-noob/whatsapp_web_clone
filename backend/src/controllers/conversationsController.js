@@ -42,7 +42,7 @@ async function getMessages(req, res) {
       .sort({ timestamp: -1 })
       .limit(Number(limit));
 
-    res.json(msgs.reverse()); // oldest to newest
+    res.json(msgs.reverse());
   } catch (error) {
     console.error("Error fetching messages:", error);
     res.status(500).json({ error: "Internal server error" });

@@ -14,8 +14,7 @@ import {
 } from "@/components/ui/sheet";
 
 export default function ChatList() {
-  const { contacts, currentChat, messages, setCurrentChat, loading } =
-    useChat();
+  const { contacts, currentChat, setCurrentChat, loading } = useChat();
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredContacts, setFilteredContacts] = useState([]);
 

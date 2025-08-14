@@ -11,7 +11,7 @@ import {
   fetchMessages,
   sendMessage as apiSendMessage,
   markRead,
-} from "../services/axios"; // new API helpers
+} from "../services/axios";
 import socket from "@/services/socket";
 import { toast } from "@/hooks/use-toast";
 
@@ -25,6 +25,34 @@ export const ChatProvider = ({ children }) => {
   const [loadingMessages, setLoadingMessages] = useState(false);
 
   const lastLoadedWaIdRef = useRef(null);
+
+  const updateContactAfterMessage = useCallback(
+    (waId, message, unreadIncrement = 0) => {
+      setContacts((prev) => {
+        const updatedContacts = prev.map((contact) => {
+          if (contact.waId === waId) {
+            return {
+              ...contact,
+              lastMessagePreview: message,
+              lastMessageAt: new Date().toISOString(),
+              unread:
+                contact.waId === currentChat?.waId
+                  ? 0
+                  : (contact.unread || 0) + unreadIncrement,
+            };
+          }
+          return contact;
+        });
+
+        updatedContacts.sort(
+          (a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)
+        );
+
+        return updatedContacts;
+      });
+    },
+    [currentChat?.waId]
+  );
 
   const loadMessages = useCallback(async (waId) => {
     if (!waId || waId === lastLoadedWaIdRef.current) return;
@@ -42,7 +70,6 @@ export const ChatProvider = ({ children }) => {
     }
   }, []);
 
-  /** 🔹 Load all contacts from backend */
   const loadContacts = useCallback(async () => {
     try {
       setLoadingContacts(true);
@@ -60,54 +87,47 @@ export const ChatProvider = ({ children }) => {
     }
   }, []);
 
-  /** 🔹 Send message with optimistic UI + reconciliation */
-  const sendMessage = useCallback(async (waId, text) => {
-    const trimmed = text?.trim();
-    if (!trimmed) return;
+  const sendMessage = useCallback(
+    async (waId, text) => {
+      const trimmed = text?.trim();
+      if (!trimmed) return;
 
-    const tempId = crypto.randomUUID();
-    const tempMessage = {
-      _id: tempId,
-      text: trimmed,
-      from_me: true,
-      timestamp: new Date().toISOString(),
-      status: "pending",
-    };
-    setMessages((prev) => [...prev, tempMessage]);
+      const tempId = crypto.randomUUID();
+      const tempMessage = {
+        _id: tempId,
+        text: trimmed,
+        from_me: true,
+        timestamp: new Date().toISOString(),
+        status: "pending",
+      };
+      setMessages((prev) => [...prev, tempMessage]);
 
-    try {
-      const res = await apiSendMessage(waId, trimmed, {
-        clientMessageId: tempId,
-      });
-      setMessages((prev) =>
-        prev.map((m) =>
-          m._id === tempId ? { ...res.message, status: "sent" } : m
-        )
-      );
-      setContacts((prev) =>
-        prev.map((c) =>
-          c.wa_id === waId
-            ? {
-                ...c,
-                last_message: trimmed,
-                last_timestamp: new Date().toISOString(),
-              }
-            : c
-        )
-      );
-    } catch (error) {
-      setMessages((prev) =>
-        prev.map((m) => (m._id === tempId ? { ...m, status: "failed" } : m))
-      );
-      toast({
-        title: "Error",
-        description: "Failed to send message",
-        variant: "destructive",
-      });
-    }
-  }, []);
+      try {
+        const res = await apiSendMessage(waId, trimmed, {
+          clientMessageId: tempId,
+        });
 
-  /** 🔹 Mark all messages in current chat as read */
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === tempId ? { ...res.message, status: "sent" } : m
+          )
+        );
+
+        updateContactAfterMessage(waId, trimmed, 0);
+      } catch (error) {
+        setMessages((prev) =>
+          prev.map((m) => (m._id === tempId ? { ...m, status: "failed" } : m))
+        );
+        toast({
+          title: "Error",
+          description: "Failed to send message",
+          variant: "destructive",
+        });
+      }
+    },
+    [updateContactAfterMessage]
+  );
+
   const markCurrentChatRead = useCallback(async () => {
     if (!currentChat) return;
     try {
@@ -122,11 +142,9 @@ export const ChatProvider = ({ children }) => {
             unreadIds.includes(m._id) ? { ...m, status: "read" } : m
           )
         );
-
-        // update contact unread count
         setContacts((prev) =>
           prev.map((c) =>
-            c.wa_id === currentChat.waId ? { ...c, unread_count: 0 } : c
+            c.waId === currentChat.waId ? { ...c, unread: 0 } : c
           )
         );
       }
@@ -141,45 +159,27 @@ export const ChatProvider = ({ children }) => {
 
   useEffect(() => {
     if (currentChat) {
-      loadMessages(currentChat.wa_id);
+      loadMessages(currentChat.waId);
       markCurrentChatRead();
     }
   }, [currentChat, loadMessages, markCurrentChatRead]);
 
   useEffect(() => {
     socket.on("new_message", (msg) => {
-      if (msg.wa_id === currentChat?.wa_id) {
+      if (msg.wa_id === currentChat?.waId) {
         setMessages((prev) => [...prev, msg]);
+        updateContactAfterMessage(msg.wa_id, msg.text, 0);
+      } else {
+        updateContactAfterMessage(msg.wa_id, msg.text, 1);
       }
-      setContacts((prev) =>
-        prev.map((c) =>
-          c.wa_id === msg.wa_id
-            ? {
-                ...c,
-                last_message: msg.text,
-                last_timestamp: msg.timestamp,
-                unread_count:
-                  msg.wa_id === currentChat?.wa_id
-                    ? c.unread_count
-                    : (c.unread_count || 0) + 1,
-              }
-            : c
-        )
-      );
     });
     return () => socket.off("new_message");
-  }, [currentChat]);
-
-  const refreshMessages = useCallback(() => {
-    if (currentChat?.waId) {
-      loadMessages(currentChat.waId);
-    }
-  }, [currentChat?.waId, loadMessages]);
+  }, [currentChat?.waId, updateContactAfterMessage]);
 
   useEffect(() => {
     socket.on("contact_updated", (updatedContact) => {
       setContacts((prev) =>
-        prev.map((c) => (c.wa_id === updatedContact.wa_id ? updatedContact : c))
+        prev.map((c) => (c.waId === updatedContact.waId ? updatedContact : c))
       );
     });
     return () => socket.off("contact_updated");
@@ -189,37 +189,18 @@ export const ChatProvider = ({ children }) => {
     socket.on(
       "conversation:update",
       ({ wa_id, last_message, last_timestamp }) => {
-        setContacts((prev) =>
-          prev.map((c) =>
-            c.wa_id === wa_id ? { ...c, last_message, last_timestamp } : c
-          )
-        );
+        updateContactAfterMessage(wa_id, last_message, 0);
       }
     );
 
     return () => socket.off("conversation:update");
-  }, [socket]);
+  }, [updateContactAfterMessage]);
 
-  function updateContactAfterMessage(waId, message) {
-    const updatedContacts = contacts.map((contact) => {
-      if (contact.waId === waId) {
-        return {
-          ...contact,
-          lastMessagePreview: message,
-          lastMessageAt: new Date().toISOString(), // or from server
-          unread: 0, // or update accordingly
-        };
-      }
-      return contact;
-    });
-
-    // Sort contacts so the most recent message comes first
-    updatedContacts.sort(
-      (a, b) => new Date(b.lastMessageAt) - new Date(a.lastMessageAt)
-    );
-
-    setContacts(updatedContacts); // Add this setter in context if not already there
-  }
+  const refreshMessages = useCallback(() => {
+    if (currentChat?.waId) {
+      loadMessages(currentChat.waId);
+    }
+  }, [currentChat?.waId, loadMessages]);
 
   return (
     <ChatContext.Provider
