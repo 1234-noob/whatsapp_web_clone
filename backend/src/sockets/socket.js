@@ -4,7 +4,10 @@ let io;
 
 function initSocket(httpServer) {
   io = new Server(httpServer, {
-    cors: { origin: "*" },
+    cors: {
+      origin:
+        "https://whatsapp-web-clone-gojsxctts-1234-noobs-projects.vercel.app",
+    },
   });
   io.on("connection", () => {});
   return io;
