@@ -3,7 +3,9 @@ const { Server } = require("socket.io");
 let io;
 
 function initSocket(httpServer) {
-  io = new Server(httpServer, { cors: { origin: "*" } });
+  io = new Server(httpServer, {
+    cors: { origin: "https://whatsapp-web-clone-ochre-xi.vercel.app/" },
+  });
   io.on("connection", () => {});
   return io;
 }

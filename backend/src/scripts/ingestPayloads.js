@@ -4,7 +4,8 @@ const axios = require("axios");
 require("dotenv").config();
 
 const PAYLOAD_DIR = process.argv[2] || path.join(__dirname, "../../payloads");
-const WEBHOOK_URL = process.env.WEBHOOK_URL || "http://localhost:3000/webhook";
+const WEBHOOK_URL =
+  process.env.WEBHOOK_URL || "https://whatsapp-web-clone-ochre-xi.vercel.app/";
 
 function validatePayload(payload, fileName) {
   const errors = [];

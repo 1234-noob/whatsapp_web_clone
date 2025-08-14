@@ -8,7 +8,9 @@ const { initSocket } = require("./sockets/socket.js");
 const PORT = process.env.PORT || 8080;
 const MONGO_URI = process.env.MONGO_URI;
 
-(async () => {
+app.use("/", (req, res) => {
+  res.send("Backend server running");
+})(async () => {
   await connectDB(MONGO_URI);
   const server = http.createServer(app);
   initSocket(server);
