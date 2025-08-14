@@ -131,7 +131,6 @@ export default function ChatList() {
       <nav className="flex-1 overflow-y-auto">
         {filteredContacts.map((contact) => {
           const active = contact.waId === currentChat?.waId;
-          console.log(contact);
 
           return (
             <button

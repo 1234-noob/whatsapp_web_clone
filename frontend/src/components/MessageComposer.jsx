@@ -11,7 +11,6 @@ export default function MessageComposer() {
   const handleSend = useCallback(async () => {
     const value = text.trim();
     if (!value || !currentChat?.waId) return;
-    console.log(value, currentChat?.waId);
 
     try {
       await sendMessage(currentChat?.waId, value);
