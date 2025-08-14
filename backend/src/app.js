@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const serverless = require("serverless-http");
 const morgan = require("morgan");
 const webhookRouter = require("./routes/webhook.js");
 const conversationsRouter = require("./routes/conversations.js");
@@ -8,7 +9,7 @@ const messagesRouter = require("./routes/messages.js");
 const app = express();
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "https://whatsapp-web-clone-ochre-xi.vercel.app/",
     credentials: true,
   })
 );
@@ -22,4 +23,4 @@ app.use("/webhook", webhookRouter);
 app.use("/contacts", conversationsRouter);
 app.use("/messages", messagesRouter);
 
-module.exports = app;
+module.exports = serverless(app);
