@@ -18,7 +18,9 @@ app.use(express.json({ limit: "2mb" }));
 app.use(morgan("dev"));
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
-
+app.get("/", (req, res) => {
+  res.send("Backend server running");
+});
 app.use("/webhook", webhookRouter);
 app.use("/contacts", conversationsRouter);
 app.use("/messages", messagesRouter);
