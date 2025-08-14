@@ -5,7 +5,8 @@ require("dotenv").config();
 
 const PAYLOAD_DIR = process.argv[2] || path.join(__dirname, "../../payloads");
 const WEBHOOK_URL =
-  process.env.WEBHOOK_URL || "https://whatsapp-web-clone-ochre-xi.vercel.app/";
+  process.env.WEBHOOK_URL ||
+  "https://whatsapp-web-clone-ochre-xi.vercel.app/webhook";
 
 function validatePayload(payload, fileName) {
   const errors = [];
